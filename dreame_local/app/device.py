@@ -424,6 +424,38 @@ class Device:
             value = (current & ~3) | {0: 2, 1: 1, 2: 0, 3: 3}[value]
         return await self.set_property("CLEANING_MODE", value)
 
+    def water_volume(self) -> int | None:
+        if self.model == "dreame.vacuum.r2401":
+            wetness = self.get("WETNESS_LEVEL")
+            if type(wetness) is int and 1 <= wetness <= 32:
+                return 1 if wetness < 6 else 3 if wetness > 26 else 2
+            return None
+        value = self.get("WATER_VOLUME")
+        return value if type(value) is int and value in (1, 2, 3) else None
+
+    def cleaning_settings(self) -> tuple[int, int]:
+        """Room/zone payloads share the same decoded water as the controls."""
+        fan, water = self.get("SUCTION_LEVEL"), self.water_volume()
+        if type(fan) is not int or fan not in (0, 1, 2, 3) or water is None:
+            raise ValueError("현재 흡입·수분 설정을 읽지 못했습니다. 잠시 후 다시 시도하세요")
+        return fan, water
+
+    def wash_frequency(self) -> int | None:
+        settings = self.get("AUTO_SWITCH_SETTINGS")
+        if isinstance(settings, str):
+            try:
+                settings = json.loads(settings)
+            except (ValueError, TypeError):
+                return None
+        if isinstance(settings, dict):
+            settings = [settings]
+        if isinstance(settings, list):
+            for setting in settings:
+                if isinstance(setting, dict) and setting.get("k") == "BackWashType":
+                    value = setting.get("v")
+                    return value if type(value) is int and value in (1, 2, 3, 4) else None
+        return None
+
     async def set_water_volume(self, value: Any) -> Any:
         if type(value) is not int or value not in (1, 2, 3):
             raise ValueError("물 사용량은 적게·보통·많이 중에서 선택하세요")
@@ -442,7 +474,7 @@ class Device:
             raise ValueError("현재 세척 설정을 읽지 못했습니다. 잠시 후 다시 시도하세요")
         # HACS may also shorten wash intervals above 26. This web page must not
         # silently rewrite that independent setting; require an already safe one.
-        if value > 26 and ((current >> 8) & 255) > 20:
+        if value > 26 and ((current >> 8) & -769) > 20 and self.wash_frequency() not in (1, 4):
             raise ValueError("수분 27 이상은 HA에서 세척 간격을 20 이하로 설정한 뒤 사용하세요")
         return await self.set_property("WETNESS_LEVEL", value)
 
@@ -525,10 +557,9 @@ class Device:
         state_code = self.get("STATE")
         error_code = self.get("ERROR")
         state_name = STATE_NAMES.get(state_code, "UNKNOWN") if state_code is not None else "UNKNOWN"
-        water = self.get("WATER_VOLUME")
+        water = self.water_volume()
         wetness = self.get("WETNESS_LEVEL") if self.model == "dreame.vacuum.r2401" else None
-        if self.model == "dreame.vacuum.r2401":
-            water = (1 if wetness < 6 else 3 if wetness > 26 else 2) if type(wetness) is int and 1 <= wetness <= 32 else None
+
         mode = self.cleaning_mode()
         return {
             "did": self.did,

@@ -1,10 +1,11 @@
 """X40 web controls: real handlers, synthetic device and intercepted wire only."""
 import importlib
+import json
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 from aiohttp.test_utils import TestClient, TestServer
 
@@ -88,6 +89,59 @@ class X40WebControlTests(unittest.IsolatedAsyncioTestCase):
         _, result = await self.post({"set": "WETNESS_LEVEL", "value": 23})
         self.assertTrue(result["ok"])
         self.assert_wire_property("WETNESS_LEVEL", 23)
+
+    async def test_high_wetness_does_not_block_area_or_intelligent_washing(self):
+        self.put("CLEANING_MODE", 25 << 8)
+        for frequency in (1, 4):
+            for settings in ([{"k": "BackWashType", "v": frequency}], {"k": "BackWashType", "v": frequency}):
+                self.put("AUTO_SWITCH_SETTINGS", json.dumps(settings))
+                self.dev.send.reset_mock()
+                await self.dev.set_wetness_level(27)
+                self.assert_wire_property("WETNESS_LEVEL", 27)
+
+    async def test_high_wetness_never_changes_time_room_or_unknown_interval(self):
+        self.put("CLEANING_MODE", 25 << 8)
+        for settings in ('[{"k":"BackWashType","v":2}]', '[{"k":"BackWashType","v":3}]', 'INVALID', None):
+            self.put("AUTO_SWITCH_SETTINGS", settings)
+            _, result = await self.post({"set": "WETNESS_LEVEL", "value": 27})
+            self.assertFalse(result["ok"])
+        self.dev.send.assert_not_awaited()
+
+    async def room_post(self, body):
+        ui = Web(self.dev)
+        ui._load_map = Mock(return_value={"map_id": 1})
+        self.dev.ensure_saved_map = AsyncMock()
+        async with TestClient(TestServer(ui.app)) as client:
+            response = await client.post("/api/rooms/action", json=body)
+            return await response.json()
+
+    async def test_room_clean_keeps_silent_zero_and_uses_decoded_wetness(self):
+        self.put("SUCTION_LEVEL", 0)
+        self.put("WATER_VOLUME", 1)  # stale legacy property must not win
+        self.put("WETNESS_LEVEL", 27)
+        result = await self.room_post({"action": "clean", "ids": [1, 2]})
+        self.assertTrue(result["ok"])
+        method, params = self.dev.send.await_args.args
+        self.assertEqual(method, "action")
+        self.assertEqual(params["in"][0], {"piid": 1, "value": 18})
+        self.assertEqual(json.loads(params["in"][1]["value"]), {"selects": [[1, 1, 0, 3, 1], [2, 1, 0, 3, 1]]})
+
+    async def test_zone_clean_includes_repeat_fan_and_decoded_water(self):
+        self.put("SUCTION_LEVEL", 0)
+        self.put("WETNESS_LEVEL", 5)
+        result = await self.room_post({"action": "zone_clean", "areas": [[0, 0, 1000, 1000]]})
+        self.assertTrue(result["ok"])
+        method, params = self.dev.send.await_args.args
+        self.assertEqual(method, "action")
+        self.assertEqual(params["in"][0], {"piid": 1, "value": 19})
+        self.assertEqual(json.loads(params["in"][1]["value"]), {"areas": [[0, 0, 1000, 1000, 1, 0, 1]]})
+
+    async def test_room_and_zone_never_invent_missing_power_or_water(self):
+        for body in ({"action": "clean", "ids": [1]}, {"action": "zone_clean", "areas": [[0, 0, 1000, 1000]]}):
+            result = await self.room_post(body)
+            self.assertFalse(result["ok"])
+            self.dev.ensure_saved_map.assert_not_awaited()
+        self.dev.send.assert_not_awaited()
 
     async def test_coarse_water_uses_hacs_x40_wetness_translation(self):
         for name, value in (("low", 5), ("medium", 16), ("high", 27)):

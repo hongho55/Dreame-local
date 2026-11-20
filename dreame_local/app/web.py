@@ -922,8 +922,7 @@ class Web:
                 ids = [int(v) for v in (body.get("ids") or [])]
                 if not ids:
                     raise ValueError("선택한 방이 없습니다")
-                fan = int(self.dev.get("SUCTION_LEVEL") or 2)
-                water = int(self.dev.get("WATER_VOLUME") or 2)
+                fan, water = self.dev.cleaning_settings()
                 cleanlist = [[rid, 1, fan, water, 1] for rid in ids]
                 payload = {"selects": cleanlist}
                 params = {
@@ -944,11 +943,12 @@ class Web:
                 return web.json_response({"ok": True, "result": result})
 
             if action == "zone_clean":
+                fan, water = self.dev.cleaning_settings()
                 areas = []
                 for area in (body.get("areas") or []):
                     coords = [int(round(float(v))) for v in area[:4]]
                     if len(coords) == 4:
-                        areas.append(coords)
+                        areas.append([*coords, 1, fan, water])
                 if not areas:
                     raise ValueError("선택한 청소 구역이 없습니다")
                 payload = {"areas": areas}
