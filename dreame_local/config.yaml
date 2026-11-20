@@ -1,5 +1,5 @@
 name: Dreame Local Cloud — X40 Pro Ultra
-version: "0.9.1-x40.1"
+version: "0.9.1-x40.2"
 slug: dreame_local_cloud
 description: Upstream-based X40 Pro Ultra compatibility trial for the existing HACS integration.
 url: https://github.com/hongho55/Dreame-local/tree/x40-pro-ultra/compat
@@ -17,12 +17,12 @@ ports:
   19973/tcp: 19973
   13267/tcp: 13267
   8443/tcp: 8443
-  19980/tcp: null
+  19980/tcp: 19980
 ports_description:
   19973/tcp: Dreame-Geraete-MQTT (DNS-Rewrite hierher)
   13267/tcp: Dreame-Cloud-API (DNS-Rewrite eu.iot.dreame.tech hierher)
   8443/tcp: HTTPS-Upload (Karten/Logs)
-  19980/tcp: HTTP upload (optional; not published by default)
+  19980/tcp: HTTP upload (robot to HA on the private LAN only)
 options:
   device_did: ""
   device_uid: ""
@@ -42,7 +42,7 @@ options:
   web_port: 8099
   upload_port: 8443
   upload_http_port: 19980
-  upload_scheme: https
+  upload_scheme: http
   api_port: 13267
   log_level: info
 schema:
