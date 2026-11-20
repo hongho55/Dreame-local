@@ -67,7 +67,7 @@ The original-source report intentionally records failing fixed-behavior
 assertions; it is not a passing upstream suite. Its 28 test methods produce
 22 failed assertions including angle subtests, zero execution errors and zero
 skips. The one-line-only upstream angle snapshot passes six tests. Full
-compatibility source passes 53 tests locally. Raw synthetic reports are
+compatibility source passes 54 tests locally. Raw synthetic reports are
 `analysis/upstream-common-evidence.json` and
 `analysis/upstream-angle-fix-evidence.json`.
 
