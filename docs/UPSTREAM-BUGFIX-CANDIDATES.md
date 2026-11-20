@@ -1,8 +1,16 @@
 # Shared upstream bugfix candidates
 
 Checked against freshly fetched `dwyschka/Dreame-local` `main` at
-`df9160cee933626f08c112d9159f9a66cea38ccc` (0.9.1). These are candidates,
-not submitted PRs. Model-independent code defects do not imply that every robot
+`df9160cee933626f08c112d9159f9a66cea38ccc` (0.9.1). Focused upstream PRs:
+
+- [#2: signed map angle](https://github.com/dwyschka/Dreame-local/pull/2) — 6 tests.
+- [#3: successful reply/status synchronization](https://github.com/dwyschka/Dreame-local/pull/3) — 8 tests.
+- [#4: stored map wrappers/reconnect](https://github.com/dwyschka/Dreame-local/pull/4) — 10 tests.
+- [#5: common Web controls and rejection reporting](https://github.com/dwyschka/Dreame-local/pull/5) — 7 tests.
+
+Each PR is based directly on original main, not on this fork's X40 changes.
+Exact published heads were tested locally; upstream reports no CI checks.
+Submission is not upstream acceptance or merge. Model-independent code defects do not imply that every robot
 or every execution path exhibits the symptom.
 
 ## Confirmed defects in original source
@@ -71,9 +79,8 @@ compatibility source passes 54 tests locally. Raw synthetic reports are
 `analysis/upstream-common-evidence.json` and
 `analysis/upstream-angle-fix-evidence.json`.
 
-Recommended submission order: the isolated angle fix; receive/status sync;
-stored-map parsing/reconnect; independent common Web corrections. Build each
-from fresh upstream main, preserve the original UI language/defaults, and run
-its reproduction on the exact proposed PR head. Do not submit the compatibility
-branch wholesale. No upstream PR/issue/comment or release has been published
-by this analysis.
+The four submitted PRs follow the separation above. They preserve the original
+UI language/defaults; #5 changes only the existing time-unit label and its
+new rejection error text. Zone payload expansion, X40 model support and Korean
+localization are excluded. Do not replace these focused branches with the full
+compatibility branch. No upstream merge or release was performed.
