@@ -1,0 +1,169 @@
+{
+  "upstream_revision": "df9160cee933626f08c112d9159f9a66cea38ccc",
+  "angle_fix_applied": false,
+  "source_evidence": {
+    "api.py": [
+      {
+        "line": 252,
+        "text": "raw[9] = lraw[9]               # robot angle"
+      },
+      {
+        "line": 306,
+        "text": "root = self.data_dir / \"uploads\" / f\"ali_dreame/{self.dev.uid}/{self.dev.did}\""
+      }
+    ],
+    "device.py": [
+      {
+        "line": 482,
+        "text": "\"cleaning_time\": self.get(\"CLEANING_TIME\"),"
+      }
+    ],
+    "events.py": [],
+    "web.py": [
+      {
+        "line": 50,
+        "text": "<button data-cmd=\"return_to_base\">Zur Basis</button>"
+      },
+      {
+        "line": 77,
+        "text": "card('Fl\u00e4che', s.cleaned_area), card('Zeit', s.cleaning_time!=null ? s.cleaning_time+' s' : null),"
+      },
+      {
+        "line": 595,
+        "text": "if not text or text.startswith(\"{\"):"
+      },
+      {
+        "line": 619,
+        "text": "root = self.data_dir / \"uploads\" / f\"ali_dreame/{self.dev.uid}/{self.dev.did}\""
+      },
+      {
+        "line": 828,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 833,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 844,
+        "text": "fan = int(self.dev.get(\"SUCTION_LEVEL\") or 2)"
+      },
+      {
+        "line": 863,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 889,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 894,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 946,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 972,
+        "text": "return web.json_response({\"ok\": True, \"result\": res})"
+      }
+    ],
+    "mapping.json": []
+  },
+  "regressions": {
+    "tests_run": 28,
+    "failures": [
+      {
+        "test": "test_positive_live_angle_clears_negative_saved_high_byte (test_api_map_angle.MapAngleTests.test_positive_live_angle_clears_negative_saved_high_byte)",
+        "reason": "AssertionError: -166 != 90"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=-32768)",
+        "reason": "AssertionError: b'\\x00\\x00' != b'\\x00\\x80'"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=-360)",
+        "reason": "AssertionError: b'\\x98\\x00' != b'\\x98\\xfe'"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=-180)",
+        "reason": "AssertionError: b'L\\x00' != b'L\\xff'"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=-30)",
+        "reason": "AssertionError: b'\\xe2\\x00' != b'\\xe2\\xff'"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=-1)",
+        "reason": "AssertionError: b'\\xff\\x00' != b'\\xff\\xff'"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=256)",
+        "reason": "AssertionError: b'\\x00\\x00' != b'\\x00\\x01'"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=300)",
+        "reason": "AssertionError: b',\\x00' != b',\\x01'"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=359)",
+        "reason": "AssertionError: b'g\\x00' != b'g\\x01'"
+      },
+      {
+        "test": "test_signed_angle_and_large_positive_preserve_both_bytes (test_api_map_angle.MapAngleTests.test_signed_angle_and_large_positive_preserve_both_bytes) (angle=32767)",
+        "reason": "AssertionError: b'\\xff\\x00' != b'\\xff\\x7f'"
+      },
+      {
+        "test": "test_rejected_robot_action_is_not_reported_as_success (test_common_web_controls.CommonWebControlTests.test_rejected_robot_action_is_not_reported_as_success)",
+        "reason": "AssertionError: True is not false"
+      },
+      {
+        "test": "test_room_clean_preserves_valid_quiet_zero (test_common_web_controls.CommonWebControlTests.test_room_clean_preserves_valid_quiet_zero)",
+        "reason": "AssertionError: 2 != 0"
+      },
+      {
+        "test": "test_ui_return_identifier_resolves_to_charge (test_common_web_controls.CommonWebControlTests.test_ui_return_identifier_resolves_to_charge)",
+        "reason": "AssertionError: 500 != 200"
+      },
+      {
+        "test": "test_zone_payload_includes_repeat_fan_and_water (test_common_web_controls.CommonWebControlTests.test_zone_payload_includes_repeat_fan_and_water)",
+        "reason": ""
+      },
+      {
+        "test": "test_identical_server_cache_can_resync_a_stale_subscriber (test_state_sync.StateSyncTests.test_identical_server_cache_can_resync_a_stale_subscriber)",
+        "reason": "AssertionError: 0 != 1"
+      },
+      {
+        "test": "test_mixed_result_preserves_only_successful_values (test_state_sync.StateSyncTests.test_mixed_result_preserves_only_successful_values)",
+        "reason": "AssertionError: [] is not true : Successful replies must reach subscribers"
+      },
+      {
+        "test": "test_negative_or_unknown_result_does_not_replace_fresh_state (test_state_sync.StateSyncTests.test_negative_or_unknown_result_does_not_replace_fresh_state)",
+        "reason": "AssertionError: 5 != 6"
+      },
+      {
+        "test": "test_no_query_or_control_command_is_sent_for_resync (test_state_sync.StateSyncTests.test_no_query_or_control_command_is_sent_for_resync)",
+        "reason": "AssertionError: [] is not true"
+      },
+      {
+        "test": "test_result_reaches_status_subscribers (test_state_sync.StateSyncTests.test_result_reaches_status_subscribers)",
+        "reason": "+             'params': [{'code': 0, 'piid': 1, 'siid': 2, 'value': 6}]}})]"
+      },
+      {
+        "test": "test_map_list_wrapper_matches_raw_frame (test_web_map.WebMapTests.test_map_list_wrapper_matches_raw_frame)",
+        "reason": "AssertionError: None != (b'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x[193 chars] {}})"
+      },
+      {
+        "test": "test_missing_uid_uses_only_unique_same_device_cache (test_web_map.WebMapTests.test_missing_uid_uses_only_unique_same_device_cache)",
+        "reason": "AssertionError: unexpectedly None"
+      },
+      {
+        "test": "test_wrapper_skips_invalid_candidate (test_web_map.WebMapTests.test_wrapper_skips_invalid_candidate)",
+        "reason": "AssertionError: None != (b'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x[193 chars] {}})"
+      }
+    ],
+    "errors": [],
+    "skipped": 0
+  }
+}

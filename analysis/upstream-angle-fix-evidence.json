@@ -1,0 +1,80 @@
+{
+  "upstream_revision": "df9160cee933626f08c112d9159f9a66cea38ccc",
+  "angle_fix_applied": true,
+  "source_evidence": {
+    "api.py": [
+      {
+        "line": 252,
+        "text": "raw[9] = lraw[9]               # robot angle"
+      },
+      {
+        "line": 306,
+        "text": "root = self.data_dir / \"uploads\" / f\"ali_dreame/{self.dev.uid}/{self.dev.did}\""
+      }
+    ],
+    "device.py": [
+      {
+        "line": 482,
+        "text": "\"cleaning_time\": self.get(\"CLEANING_TIME\"),"
+      }
+    ],
+    "events.py": [],
+    "web.py": [
+      {
+        "line": 50,
+        "text": "<button data-cmd=\"return_to_base\">Zur Basis</button>"
+      },
+      {
+        "line": 77,
+        "text": "card('Fl\u00e4che', s.cleaned_area), card('Zeit', s.cleaning_time!=null ? s.cleaning_time+' s' : null),"
+      },
+      {
+        "line": 595,
+        "text": "if not text or text.startswith(\"{\"):"
+      },
+      {
+        "line": 619,
+        "text": "root = self.data_dir / \"uploads\" / f\"ali_dreame/{self.dev.uid}/{self.dev.did}\""
+      },
+      {
+        "line": 828,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 833,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 844,
+        "text": "fan = int(self.dev.get(\"SUCTION_LEVEL\") or 2)"
+      },
+      {
+        "line": 863,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 889,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 894,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 946,
+        "text": "return web.json_response({\"ok\": True, \"result\": result})"
+      },
+      {
+        "line": 972,
+        "text": "return web.json_response({\"ok\": True, \"result\": res})"
+      }
+    ],
+    "mapping.json": []
+  },
+  "regressions": {
+    "tests_run": 6,
+    "failures": [],
+    "errors": [],
+    "skipped": 0
+  }
+}

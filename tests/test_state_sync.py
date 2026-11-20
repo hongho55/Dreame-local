@@ -54,6 +54,7 @@ class StateSyncTests(unittest.IsolatedAsyncioTestCase):
     async def test_mixed_result_preserves_only_successful_values(self):
         good = {"siid": 3, "piid": 1, "value": 100, "code": 0}
         await self.reply([good, {"siid": 2, "piid": 1, "code": -1}, "invalid"])
+        self.assertTrue(self.notifications(), "Successful replies must reach subscribers")
         self.assertEqual(self.notifications()[0][1]["data"]["params"], [good])
 
     async def test_raw_map_result_is_not_injected_as_a_push_frame(self):
