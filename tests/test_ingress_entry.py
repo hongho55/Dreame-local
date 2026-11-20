@@ -1,5 +1,7 @@
 """Exercise the configured entry with Supervisor's literal URL join."""
+import ast
 import importlib
+import importlib.util
 import os
 from pathlib import Path
 import re
@@ -16,6 +18,20 @@ Web = importlib.import_module("web").Web
 
 
 class IngressEntryTests(unittest.IsolatedAsyncioTestCase):
+    def test_runtime_version_matches_addon_metadata(self):
+        path = Path(os.environ.get("DREAME_CONFIG", ROOT / "dreame_local" / "config.yaml"))
+        match = re.search(r'^version:\s*["\']?([^\s"\']+)', path.read_text(), re.MULTILINE)
+        assert match is not None, "version missing from add-on metadata"
+        expected = match.group(1)
+        # Parse source without importing main (no startup, config or TLS reads).
+        spec = importlib.util.find_spec("main")
+        assert spec is not None and spec.origin is not None
+        source = Path(spec.origin).read_text()
+        tree = ast.parse(source)
+        version = next(ast.literal_eval(node.value) for node in tree.body
+                       if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "VERSION" for t in node.targets))
+        self.assertEqual(version, expected)
+
     async def test_supervisor_generated_entry_reaches_state_controls(self):
         path = Path(os.environ.get("DREAME_CONFIG", ROOT / "dreame_local" / "config.yaml"))
         match = re.search(r"^ingress_entry:\s*([^\n]+)", path.read_text(), re.MULTILINE)
