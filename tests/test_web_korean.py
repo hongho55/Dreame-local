@@ -40,6 +40,20 @@ class Controls(HTMLParser):
 
 
 class KoreanUITests(unittest.IsolatedAsyncioTestCase):
+    async def test_readonly_status_and_maintenance_panels(self):
+        self.assertIn('id="stationCards"', ui.PAGE)
+        self.assertIn('id="maintenanceCards"', ui.PAGE)
+        self.assertIn('자동 초기화하지 않습니다', ui.PAGE)
+        self.assertIn('전체 청소 완료를 판정하지 않습니다', ui.PAGE)
+        parser = Controls()
+        parser.feed(ui.PAGE)
+        self.assertFalse(any('reset' in name.lower() for name in parser.commands))
+
+    async def test_reported_cleaning_times_use_minutes(self):
+        self.assertIn("unit(s.cleaning_time,'분')", ui.PAGE)
+        self.assertIn("unit(s.total_time,'분')", ui.PAGE)
+        self.assertNotIn("s.cleaning_time+' 초'", ui.PAGE)
+
     async def test_both_routes_serve_korean_html(self):
         async with TestClient(TestServer(ui.Web(SimpleNamespace()).app)) as client:
             for path, heading in (("/", "드리미 로컬"), ("/rooms", "지도·방 관리")):

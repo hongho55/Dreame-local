@@ -64,9 +64,14 @@ input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px soli
 <button id="mapreq">지도 요청</button>
 <button id="mapcheck">지도 점검</button>
 <a href="rooms" style="align-self:center">지도·방 관리 →</a></div>
-<pre id="log"></pre>
-<h3 style="font-size:1rem">진단 정보</h3>
-<pre id="diag">…</pre>
+<h2 style="font-size:1rem">작업·스테이션</h2>
+<div class="grid" id="stationCards"></div>
+<p style="font-size:.85rem;opacity:.75">충전대 복귀·물걸레 세척은 작업 중에도 일어납니다. 이 화면은 전체 청소 완료를 판정하지 않습니다.</p>
+<details><summary>소모품·누적 기록 (읽기 전용)</summary>
+<div class="grid" id="maintenanceCards" style="margin-top:8px"></div>
+<p style="font-size:.85rem;opacity:.75">소모품은 기기가 보고한 잔여율입니다. 0%가 실제 마모인지 호환 문제인지는 미확정이며 자동 초기화하지 않습니다.</p></details>
+<details><summary>속성 원시값</summary><pre id="log"></pre></details>
+<details><summary>진단 정보</summary><pre id="diag">…</pre></details>
 <script>
 async function j(p, opt){
   const r = await fetch(p, opt), d = await r.json();
@@ -93,7 +98,14 @@ const LABELS_KO={unknown:'알 수 없음',idle:'대기 중',paused:'일시정지
   quiet:'저소음',standard:'표준',strong:'강력',turbo:'터보',low:'적게',medium:'보통',high:'많이',
   no_error:'없음',none:'없음'};
 function label(v){return v==null?v:(LABELS_KO[String(v).toLowerCase()]??v)}
-function card(k,v){ return `<div class="card"><div class="k">${k}</div><div class="v">${v??'–'}</div></div>`; }
+function escapeHTML(v){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function card(k,v){ return `<div class="card"><div class="k">${escapeHTML(k)}</div><div class="v">${escapeHTML(v??'확인 불가')}</div></div>`; }
+function unit(v,u){return typeof v==='number' && Number.isFinite(v)?v+' '+u:null}
+function enumText(v,labels){return v==null?null:(Number.isInteger(v)&&Object.hasOwn(labels,v)?labels[v]:'알 수 없음 (코드 '+v+')')}
+// HACS v2.0.2 types.py enum values; unrecognized codes stay explicit.
+const TASK_KO={0:'진행 중인 작업 없음',1:'전체 자동 청소',2:'구역 청소',3:'방 청소',4:'부분 청소',5:'빠른 지도 작성',6:'전체 청소 일시정지',7:'구역 청소 일시정지',8:'방 청소 일시정지',9:'부분 청소 일시정지',10:'지도 청소 일시정지',11:'복귀 일시정지',12:'물걸레 일시정지',13:'방 물걸레 일시정지',14:'구역 물걸레 일시정지',15:'자동 물걸레 일시정지',16:'자동 복귀 일시정지',17:'방 청소 복귀 일시정지',18:'구역 청소 복귀 일시정지',25:'물걸레 장착을 위해 복귀',26:'물걸레 분리를 위해 복귀',27:'스테이션 청소'};
+const BASE_KO={0:'대기',1:'물걸레 세척 중',2:'물걸레 건조 중',3:'복귀 중',4:'일시정지',5:'물 보충 준비',6:'물 보충 중',7:'마른 물걸레를 위해 복귀'};
+const WATER_WARNING_KO={0:'경고 없음',1:'물 없음 (알림 해제됨)',2:'물 없음',3:'청소 후 물 없음',4:'청소용 물 없음',5:'물 부족',6:'물통 미장착'};
 async function tick(){
   try {
     const s = await j('api/state?t=' + Date.now());
@@ -102,8 +114,8 @@ async function tick(){
     document.getElementById('clients').textContent = (s.clients || []).map(c => c.client_id).join(', ') || '연결된 MQTT 클라이언트 없음';
     document.getElementById('cards').innerHTML = [
       card('배터리', s.battery!=null ? s.battery+' %' : null),
-      card('로봇 상태', label(s.state)), card('오류', label(s.error)||'–'),
-      card('청소 면적', s.cleaned_area), card('청소 시간', s.cleaning_time!=null ? s.cleaning_time+' 초' : null),
+      card('로봇 상태', label(s.state)), card('오류', s.error_code===0?'없음':label(s.error)),
+      card('청소 면적', unit(s.cleaned_area,'m²')), card('청소 시간', unit(s.cleaning_time,'분')),
       card('흡입 세기', label(s.suction)), card('물 사용량', label(s.water)), card('청소 방식', label(s.mode)),
       card('펌웨어', s.ver)
     ].join('');
@@ -113,6 +125,21 @@ async function tick(){
     const wetness=document.getElementById('wetness');
     document.getElementById('wetnessControls').hidden=!s.wetness_supported;
     if(document.activeElement!==wetness && s.wetness_level!=null) wetness.value=s.wetness_level;
+    const p=s.props||{};
+    document.getElementById('stationCards').innerHTML=[
+      card('작업 단계',enumText(p.TASK_STATUS,TASK_KO)),
+      card('스테이션',enumText(p.SELF_WASH_BASE_STATUS,BASE_KO)),
+      card('청소 진행률',unit(p.CLEANING_PROGRESS,'%')),
+      card('건조 진행률',unit(p.DRYING_PROGRESS,'%')),
+      card('물 관련 경고',enumText(p.LOW_WATER_WARNING,WATER_WARNING_KO)),
+      card('먼지 비우기',enumText(p.AUTO_EMPTY_STATUS,{0:'대기',1:'먼지 비우는 중',2:'수행되지 않음'}))
+    ].join('');
+    document.getElementById('maintenanceCards').innerHTML=[
+      card('메인 브러시 잔여',unit(s.main_brush,'%')),card('사이드 브러시 잔여',unit(s.side_brush,'%')),
+      card('필터 잔여',unit(s.filter,'%')),card('센서 잔여',unit(s.sensor,'%')),
+      card('누적 청소 면적',unit(s.total_area,'m²')),card('누적 청소 시간',unit(s.total_time,'분')),
+      card('누적 청소 횟수',unit(s.total_count,'회'))
+    ].join('');
     document.getElementById('log').textContent = JSON.stringify(s.props,null,1).slice(0,4000);
   } catch(e){ document.getElementById('conn').textContent = '애드온에 연결할 수 없습니다'; }
 }
