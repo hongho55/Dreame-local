@@ -4,6 +4,8 @@ import importlib
 import json
 from pathlib import Path
 import sys
+import tempfile
+from types import SimpleNamespace
 import unittest
 import zlib
 
@@ -21,6 +23,39 @@ def blob():
 
 
 class WebMapTests(unittest.TestCase):
+    def load_saved(self, root, uid="", did="synthetic-device"):
+        return Web(SimpleNamespace(uid=uid, did=did, props={}), data_dir=root)._load_map()
+
+    def save_map(self, root, uid, did="synthetic-device"):
+        path = root / "uploads" / "ali_dreame" / uid / did / "9"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"mapstr": [{"map": blob()}]}))
+
+    def test_missing_uid_uses_only_unique_same_device_cache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.save_map(root, "synthetic-account")
+            self.assertIsNotNone(self.load_saved(root))
+
+    def test_missing_uid_never_selects_other_device(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.save_map(root, "synthetic-account", did="different-device")
+            self.assertIsNone(self.load_saved(root))
+
+    def test_missing_uid_rejects_ambiguous_accounts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.save_map(root, "synthetic-account-a")
+            self.save_map(root, "synthetic-account-b")
+            self.assertIsNone(self.load_saved(root))
+
+    def test_known_uid_never_falls_back_to_other_account(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.save_map(root, "different-account")
+            self.assertIsNone(self.load_saved(root, uid="known-account"))
+
     def test_existing_raw_frame(self):
         decoded = Web._decode_map_text(blob())
         self.assertEqual(decoded[1:3], (4, 3))
