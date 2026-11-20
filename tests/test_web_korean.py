@@ -59,7 +59,7 @@ class KoreanUITests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(parser.options, {
             "suction": ["", "quiet", "standard", "strong", "turbo"],
             "water": ["", "low", "medium", "high"],
-            "mode": ["", "sweeping", "mopping", "sweeping_and_mopping"],
+            "mode": ["", "sweeping", "mopping", "sweeping_and_mopping", "mopping_after_sweeping"],
         })
 
     async def test_german_display_strings_removed(self):

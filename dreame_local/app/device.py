@@ -68,6 +68,7 @@ HA_STATE = {
 POLL_PROPS = [
     "STATE", "ERROR", "BATTERY_LEVEL", "CHARGING_STATUS", "STATUS", "TASK_STATUS",
     "CLEANING_TIME", "CLEANED_AREA", "CLEANING_PROGRESS", "CLEANING_MODE", "CLEANING_PAUSED",
+    "WETNESS_LEVEL", "AUTO_EMPTY_STATUS", "AUTO_MOUNT_MOP", "TASK_TYPE", "SCHEDULED_CLEAN",
     "SUCTION_LEVEL", "WATER_VOLUME", "WATER_TANK", "DRYING_PROGRESS",
     "MAIN_BRUSH_LEFT", "MAIN_BRUSH_TIME_LEFT", "SIDE_BRUSH_LEFT", "SIDE_BRUSH_TIME_LEFT",
     "FILTER_LEFT", "FILTER_TIME_LEFT", "SENSOR_DIRTY_LEFT", "SENSOR_DIRTY_TIME_LEFT",
@@ -399,6 +400,52 @@ class Device:
         params["in"] = [] if piid is None else [{"piid": piid, "value": value}]
         return await self.send("action", params)
 
+    def cleaning_mode(self) -> int | None:
+        value = self.get("CLEANING_MODE")
+        if self.model == "dreame.vacuum.r2401" and type(value) is int and value >= 0:
+            # X40 self-wash models pack wash interval and moisture above mode.
+            # HACS v2.0.2 _update_cleaning_mode swaps logical sweep/combo (0/2).
+            return {0: 2, 1: 1, 2: 0, 3: 3}[value & 3]
+        return value if type(value) is int and value in MODE_NAMES else None
+
+    async def set_cleaning_mode(self, value: Any) -> Any:
+        """Web setting only; raw HACS set_properties remains untouched."""
+        if type(value) is not int or value not in (0, 1, 2, 3):
+            raise ValueError("지원하지 않는 청소 방식입니다")
+        if self.model == "dreame.vacuum.r2401":
+            current = self.get("CLEANING_MODE")
+            if type(current) is not int or current < 0:
+                raise ValueError("현재 청소 설정을 읽지 못했습니다. 잠시 후 다시 시도하세요")
+            if value == 3 and self.cleaning_mode() != 3 and (
+                self.get("TASK_STATUS") != 0 or self.get("STATE") not in (2, 6, 13)
+            ):
+                raise ValueError("작업 중에는 흡입 후 물걸레 방식으로 바꿀 수 없습니다")
+            # Preserve every other field; never send bare enum 3 to an X40.
+            value = (current & ~3) | {0: 2, 1: 1, 2: 0, 3: 3}[value]
+        return await self.set_property("CLEANING_MODE", value)
+
+    async def set_water_volume(self, value: Any) -> Any:
+        if type(value) is not int or value not in (1, 2, 3):
+            raise ValueError("물 사용량은 적게·보통·많이 중에서 선택하세요")
+        if self.model == "dreame.vacuum.r2401":
+            # HACS _update_water_level uses fine wetness for wetness_level models.
+            return await self.set_wetness_level({1: 5, 2: 16, 3: 27}[value])
+        return await self.set_property("WATER_VOLUME", value)
+
+    async def set_wetness_level(self, value: Any) -> Any:
+        if self.model != "dreame.vacuum.r2401":
+            raise ValueError("이 기기의 수분 단계 지원은 확인되지 않았습니다")
+        if type(value) is not int or not 1 <= value <= 32:
+            raise ValueError("물걸레 수분은 1~32의 정수로 입력하세요")
+        current = self.get("CLEANING_MODE")
+        if type(current) is not int or current < 0:
+            raise ValueError("현재 세척 설정을 읽지 못했습니다. 잠시 후 다시 시도하세요")
+        # HACS may also shorten wash intervals above 26. This web page must not
+        # silently rewrite that independent setting; require an already safe one.
+        if value > 26 and ((current >> 8) & 255) > 20:
+            raise ValueError("수분 27 이상은 HA에서 세척 간격을 20 이하로 설정한 뒤 사용하세요")
+        return await self.set_property("WETNESS_LEVEL", value)
+
     async def set_property(self, prop: str, value: Any) -> Any:
         p = PROPS.get(prop)
         if not p:
@@ -478,6 +525,11 @@ class Device:
         state_code = self.get("STATE")
         error_code = self.get("ERROR")
         state_name = STATE_NAMES.get(state_code, "UNKNOWN") if state_code is not None else "UNKNOWN"
+        water = self.get("WATER_VOLUME")
+        wetness = self.get("WETNESS_LEVEL") if self.model == "dreame.vacuum.r2401" else None
+        if self.model == "dreame.vacuum.r2401":
+            water = (1 if wetness < 6 else 3 if wetness > 26 else 2) if type(wetness) is int and 1 <= wetness <= 32 else None
+        mode = self.cleaning_mode()
         return {
             "did": self.did,
             "uid": self.uid,
@@ -495,8 +547,10 @@ class Device:
             "cleaned_area": self.get("CLEANED_AREA"),
             "cleaning_time": self.get("CLEANING_TIME"),
             "suction": (SUCTION_NAMES.get(self.get("SUCTION_LEVEL")) or "").lower() or None,
-            "water": (WATER_NAMES.get(self.get("WATER_VOLUME")) or "").lower() or None,
-            "mode": (MODE_NAMES.get(self.get("CLEANING_MODE")) or "").lower() or None,
+            "water": (WATER_NAMES.get(water) or "").lower() if water is not None else None,
+            "mode": (MODE_NAMES.get(mode) or "").lower() if mode is not None else None,
+            "wetness_level": wetness,
+            "wetness_supported": self.model == "dreame.vacuum.r2401",
             "main_brush": self.get("MAIN_BRUSH_LEFT"),
             "side_brush": self.get("SIDE_BRUSH_LEFT"),
             "filter": self.get("FILTER_LEFT"),

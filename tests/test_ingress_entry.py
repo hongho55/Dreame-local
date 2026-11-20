@@ -16,7 +16,7 @@ Web = importlib.import_module("web").Web
 
 
 class IngressEntryTests(unittest.IsolatedAsyncioTestCase):
-    async def test_supervisor_generated_entry_reaches_rooms(self):
+    async def test_supervisor_generated_entry_reaches_state_controls(self):
         path = Path(os.environ.get("DREAME_CONFIG", ROOT / "dreame_local" / "config.yaml"))
         match = re.search(r"^ingress_entry:\s*([^\n]+)", path.read_text(), re.MULTILINE)
         if match is None:
@@ -30,9 +30,14 @@ class IngressEntryTests(unittest.IsolatedAsyncioTestCase):
         async with TestClient(TestServer(ui.app)) as client:
             response = await client.session.get(f"http://127.0.0.1:{client.server.port}{upstream_path}")
             self.assertEqual(response.status, 200, f"generated upstream path: {upstream_path}")
-            self.assertIn("api/map.png", await response.text())
+            self.assertIn("상태·제어", await response.text())
+            self.assertEqual(upstream_path, "/")
+            rooms = await client.get("/rooms")
+            self.assertEqual(rooms.status, 200)
+            self.assertIn("api/map.png", await rooms.text())
         self.assertEqual(urljoin(ingress_url, "api/rooms"), prefix + "api/rooms")
         self.assertEqual(urljoin(ingress_url, "api/map.png"), prefix + "api/map.png")
+        self.assertEqual(urljoin(ingress_url, "rooms"), prefix + "rooms")
 
 
 if __name__ == "__main__":

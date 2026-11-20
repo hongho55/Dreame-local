@@ -35,11 +35,14 @@ h1{font-size:1.2rem;margin:.2rem 0 1rem}
 button{font:inherit;padding:10px 14px;border-radius:10px;border:1px solid #8886;background:#8881;cursor:pointer}
 button:active{transform:scale(.97)}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.row label{display:flex;flex-direction:column;gap:4px;max-width:100%}
+[hidden]{display:none!important}
+select{max-width:100%}
 pre{background:#8881;padding:10px;border-radius:10px;overflow:auto;font-size:12px}
 input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px solid #8886;background:transparent}
 .off{color:#e55}.on{color:#3c5}
 </style></head><body>
-<h1>드리미 로컬 <small id="ver" style="font-size:.7rem;opacity:.6"></small></h1>
+<h1>드리미 로컬 · 상태·제어 <small id="ver" style="font-size:.7rem;opacity:.6"></small></h1>
 <div class="card"><span class="k">연결 상태</span><div class="v" id="conn">…</div>
 <div class="k" id="clients" style="margin-top:6px;text-transform:none;letter-spacing:0"></div></div>
 <div class="grid" id="cards" style="margin-top:8px"></div>
@@ -51,10 +54,12 @@ input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px soli
   <button data-cmd="locate">로봇 찾기</button>
 </div>
 <div class="row">
-  <select id="suction"><option value="">흡입 세기…</option><option value="quiet">저소음</option><option value="standard">표준</option><option value="strong">강력</option><option value="turbo">터보</option></select>
-  <select id="water"><option value="">물 사용량…</option><option value="low">적게</option><option value="medium">보통</option><option value="high">많이</option></select>
-  <select id="mode"><option value="">청소 방식…</option><option value="sweeping">흡입 청소</option><option value="mopping">물걸레 청소</option><option value="sweeping_and_mopping">흡입·물걸레 동시 청소</option></select>
+  <label>흡입 세기 <select id="suction"><option value="">선택…</option><option value="quiet">저소음</option><option value="standard">표준</option><option value="strong">강력</option><option value="turbo">터보</option></select></label>
+  <label>물 사용량 <select id="water"><option value="">선택…</option><option value="low">적게</option><option value="medium">보통</option><option value="high">많이</option></select></label>
+  <label>청소 방식 <select id="mode"><option value="">선택…</option><option value="sweeping">흡입 청소</option><option value="mopping">물걸레 청소</option><option value="sweeping_and_mopping">흡입·물걸레 동시 청소</option><option value="mopping_after_sweeping">흡입 청소 후 물걸레 청소</option></select></label>
 </div>
+<div class="row" id="wetnessControls" hidden><label>물걸레 수분 (1~32) <input id="wetness" type="number" min="1" max="32" step="1" inputmode="numeric" style="width:5em"></label><button id="wetnessApply">수분 단계 적용</button></div>
+<p id="commandStatus" role="status" aria-live="polite">청소 방식을 선택해도 청소가 바로 시작되지는 않습니다.</p>
 <div class="row"><button id="refresh">새로고침</button>
 <button id="mapreq">지도 요청</button>
 <button id="mapcheck">지도 점검</button>
@@ -63,7 +68,20 @@ input,select,textarea{font:inherit;padding:8px;border-radius:8px;border:1px soli
 <h3 style="font-size:1rem">진단 정보</h3>
 <pre id="diag">…</pre>
 <script>
-async function j(p, opt){ const r = await fetch(p, opt); return r.json(); }
+async function j(p, opt){
+  const r = await fetch(p, opt), d = await r.json();
+  if(!r.ok || d.ok===false) throw new Error(d.error||'요청에 실패했습니다. 연결 상태를 확인하세요.');
+  return d;
+}
+async function command(body){
+  const status=document.getElementById('commandStatus');
+  status.textContent='명령 전송 중…';
+  try{
+    await j('api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    status.textContent='명령을 전달했습니다. 기기 상태 반영을 확인하세요.';
+  }catch(e){status.textContent='명령 실패: '+e.message;}
+  setTimeout(tick,500);
+}
 // Display labels only: API values and command payloads stay unchanged.
 const LABELS_KO={unknown:'알 수 없음',idle:'대기 중',paused:'일시정지',error:'오류',
   returning:'충전대로 복귀 중',charging:'충전 중',charging_completed:'충전 완료',
@@ -92,19 +110,19 @@ async function tick(){
     if(s.suction) document.getElementById('suction').value = s.suction;
     if(s.water) document.getElementById('water').value = s.water;
     if(s.mode) document.getElementById('mode').value = s.mode;
+    const wetness=document.getElementById('wetness');
+    document.getElementById('wetnessControls').hidden=!s.wetness_supported;
+    if(document.activeElement!==wetness && s.wetness_level!=null) wetness.value=s.wetness_level;
     document.getElementById('log').textContent = JSON.stringify(s.props,null,1).slice(0,4000);
   } catch(e){ document.getElementById('conn').textContent = '애드온에 연결할 수 없습니다'; }
 }
-document.querySelectorAll('button[data-cmd]').forEach(b=>b.onclick=async()=>{
-  await j('api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:b.dataset.cmd})});
-  setTimeout(tick,500);
-});
+document.querySelectorAll('button[data-cmd]').forEach(b=>b.onclick=()=>command({action:b.dataset.cmd}));
 for (const [id,prop] of [['suction','SUCTION_LEVEL'],['water','WATER_VOLUME'],['mode','CLEANING_MODE']]){
   const el=document.getElementById(id);
   el.onchange=async()=>{ if(!el.value) return;
-    await j('api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({set:prop,value:el.value})});
-    setTimeout(tick,500); };
+    await command({set:prop,value:el.value}); };
 }
+document.getElementById('wetnessApply').onclick=()=>command({set:'WETNESS_LEVEL',value:Number(document.getElementById('wetness').value)});
 document.getElementById('mapreq').onclick=async()=>{
   const s=await j('api/state');
   const frame = JSON.stringify({req_type:1,frame_type:'I',force_type:1,time:Date.now()});
@@ -988,7 +1006,8 @@ class Web:
         body: dict[str, Any] = await request.json()
         try:
             if "action" in body:
-                res = await self.dev.action(str(body["action"]))
+                action = str(body["action"])
+                res = await self.dev.action("charge" if action == "return_to_base" else action)
             elif "method" in body:
                 res = await self.dev.send(str(body["method"]), body.get("params"))
             elif "set" in body:
@@ -1000,11 +1019,22 @@ class Web:
                     value = WATER.get(value.upper(), value)
                 elif prop == "CLEANING_MODE" and isinstance(value, str):
                     value = MODE.get(value.upper(), value)
-                res = await self.dev.set_property(prop, value)
+                if prop == "CLEANING_MODE":
+                    res = await self.dev.set_cleaning_mode(value)
+                elif prop == "WATER_VOLUME":
+                    res = await self.dev.set_water_volume(value)
+                elif prop == "WETNESS_LEVEL":
+                    res = await self.dev.set_wetness_level(value)
+                else:
+                    res = await self.dev.set_property(prop, value)
             elif "get" in body:
                 res = await self.dev.get_properties(list(body["get"]))
             else:
                 return web.json_response({"ok": False, "error": "action|method|set|get 중 하나가 필요합니다"}, status=400)
+            results = res if isinstance(res, list) else [res]
+            failures = [r.get("code") for r in results if isinstance(r, dict) and r.get("code") not in (0, None)]
+            if failures:
+                return web.json_response({"ok": False, "error": f"로봇이 명령을 거절했습니다 (코드 {failures[0]})", "result": res})
             return web.json_response({"ok": True, "result": res})
         except Exception as exc:
             return web.json_response({"ok": False, "error": str(exc)}, status=500)
