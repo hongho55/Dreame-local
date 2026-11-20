@@ -1,6 +1,6 @@
 # Dreame Local Cloud
 
-> **X40 Pro Ultra compatibility branch:** based on upstream **0.9.1**, with minimal property-result forwarding fixes. Deployed with the existing private installation wiring: docked state and PNG decoding verified; LAN HTTP upload canary passed; fourteen regressions passed in the native HAOS image. HA sidebar ingress is enabled, and the web stored-map PNG and six-room listing were verified. **New motion transitions and live map tracking remain unverified.** [한국어 설정·검증 범위](docs/X40-PRO-ULTRA.ko.md). The fork's `main` remains upstream; development is on `x40-pro-ultra/compat`. Original upstream documentation follows unchanged below.
+> **X40 Pro Ultra compatibility branch:** based on upstream **0.9.1**, with minimal property-result forwarding fixes. Deployed with the existing private installation wiring: docked state and PNG decoding verified; LAN HTTP upload canary passed; nineteen regressions passed in the native HAOS image. HA sidebar ingress is enabled with its entry-path correction, and the web stored-map PNG and six-room listing survive an uninitialized UID after restart. **Authenticated iframe rendering, new motion transitions and live map tracking remain unverified.** [한국어 설정·검증 범위](docs/X40-PRO-ULTRA.ko.md). The fork's `main` remains upstream; development is on `x40-pro-ultra/compat`. Original upstream documentation follows unchanged below.
 
 Lokaler Cloud-Ersatz für Dreame-Roboter (L10s Ultra Gen 2 & verwandte
 Modelle) — als Home-Assistant-Add-on. **Home Assistant übernimmt die Rolle
