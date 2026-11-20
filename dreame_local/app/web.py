@@ -592,7 +592,23 @@ class Web:
     @staticmethod
     def _decode_map_text(text: str):
         text = text.strip()
-        if not text or text.startswith("{"):
+        if not text:
+            return None
+        if text.startswith("{"):
+            try:
+                entries = json.loads(text).get("mapstr")
+            except (ValueError, TypeError):
+                return None
+            if not isinstance(entries, list):
+                return None
+            for entry in entries:
+                blob = entry.get("map") if isinstance(entry, dict) else None
+                # Accept the same map-list wrapper as the cloud API, not
+                # recursively nested wrappers or unrelated uploaded JSON.
+                if isinstance(blob, str) and not blob.lstrip().startswith("{"):
+                    decoded = Web._decode_map_text(blob)
+                    if decoded:
+                        return decoded
             return None
         if "," in text:
             text = text.split(",", 1)[0]

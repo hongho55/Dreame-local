@@ -1,5 +1,5 @@
 name: Dreame Local Cloud — X40 Pro Ultra
-version: "0.9.1-x40.2"
+version: "0.9.1-x40.3"
 slug: dreame_local_cloud
 description: Upstream-based X40 Pro Ultra compatibility trial for the existing HACS integration.
 url: https://github.com/hongho55/Dreame-local/tree/x40-pro-ultra/compat
@@ -10,9 +10,11 @@ startup: application
 boot: auto
 init: false
 panel_icon: mdi:robot-vacuum
-panel_title: Dreame Local
+panel_title: "드리미 X40"
+panel_admin: true
 ingress: true
 ingress_port: 8099
+ingress_entry: /rooms
 ports:
   19973/tcp: 19973
   13267/tcp: 13267
