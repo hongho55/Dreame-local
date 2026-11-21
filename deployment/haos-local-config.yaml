@@ -1,0 +1,70 @@
+name: Dreame Local — X40 Pro Ultra
+version: "0.9.1-x40.9"
+slug: dreame_local_backend
+description: Upstream 0.9.1 with minimal X40 state forwarding and approved LAN HTTP upload
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+host_network: false
+homeassistant_api: false
+hassio_api: false
+ingress: false
+map:
+  - share:ro
+watchdog: http://[HOST]:8099/api/state
+ports:
+  18443/tcp: 8443
+  11000/tcp: 10000
+  13267/tcp: 13267
+  29974/tcp: 19973
+  19974/tcp: 29973
+  19980/tcp: 19980
+  1053/tcp: null
+  1053/udp: null
+ports_description:
+  18443/tcp: Existing HTTPS upload frontend (preserved)
+  11000/tcp: Existing HA API TLS frontend
+  13267/tcp: Existing stock HACS API TLS frontend
+  29974/tcp: Existing HA MQTT TLS frontend
+  19974/tcp: Existing robot MQTT TLS frontend
+  19980/tcp: HTTP map/log upload from the robot on the private LAN
+  1053/tcp: Existing exact-name robot DNS
+  1053/udp: Existing exact-name robot DNS
+options:
+  mode: standby
+  bind_host: container
+  public_host: ""
+  robot_peers: []
+  region: cn
+  topic_region: cn
+  firmware: ""
+  mac: ""
+  controls_enabled: false
+  upload_port: 0
+  upload_host: ""
+  upload_tls_mode: robot
+  upload_cert_auto: false
+  provision_from_share: false
+  dns_name: ""
+  dns_address: ""
+schema:
+  mode: list(standby|local)
+  bind_host: str
+  public_host: str
+  robot_peers:
+    - str
+  region: list(cn|eu|us|sg)
+  topic_region: str
+  firmware: str
+  mac: str
+  controls_enabled: bool
+  upload_port: int(0,65535)
+  upload_host: str
+  upload_tls_mode: list(robot|dedicated)
+  upload_cert_auto: bool
+  provision_from_share: bool
+  dns_name: str
+  dns_address: str
