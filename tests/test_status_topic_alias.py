@@ -5,10 +5,15 @@ No network, identity, credentials or keys. The real route is verified separately
 from __future__ import annotations
 
 import ast
+import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
-SOURCE = Path(__file__).resolve().parents[1] / "dreame_local" / "app" / "main.py"
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "dreame_local" / "app"))
+spec = importlib.util.find_spec("main")
+assert spec is not None and spec.origin is not None
+SOURCE = Path(spec.origin)
 
 
 class StatusTopicAliasTests(unittest.TestCase):
