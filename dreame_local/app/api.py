@@ -237,11 +237,13 @@ class DreameApi:
             image_end = 27 + width * height
             info = json.loads(bytes(raw[image_end:]).decode("utf8"))
 
+            live_frame = False
             live_blob = self.dev.props.get("6.1")
             if isinstance(live_blob, str) and live_blob:
                 lt = live_blob.replace("_", "/").replace("-", "+")
                 lraw = zlib.decompress(base64.b64decode(lt + "=" * (-len(lt) % 4)))
                 if len(lraw) >= 27:
+                    live_frame = lraw[4] in (ord("I"), ord("P"))
                     # Map-ID der gespeicherten Karte (24) beibehalten, aber
                     # die Frame-ID des aktuellen Live-Frames setzen. Der
                     # Broker schreibt die folgenden P-Frames ebenfalls auf
@@ -259,7 +261,12 @@ class DreameApi:
                     except Exception:
                         pass
 
-            info["rpur"] = 1
+            task = self.dev.props.get("4.1")
+            active_task = isinstance(task, int) and not isinstance(task, bool) and task > 0
+            # A restored/docked image is not a valid P-frame base in HACS:
+            # it deletes that base on the next P and requests another I.
+            # Only an active task with a genuine live header is a live base.
+            info["rpur"] = 0 if live_frame and active_task else 1
             # Die Integration erlaubt Raum-/Kartenaktionen nur bei
             # saved_map_status == 2 (has_saved_map). Der importierte Frame
             # hat keinen ris-Wert und wird sonst als "nicht gespeichert"

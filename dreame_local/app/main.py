@@ -27,7 +27,7 @@ from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.9.1-x40.7"
+VERSION = "0.9.1-x40.8"
 
 
 def load_options() -> dict:
@@ -198,6 +198,25 @@ async def upload_server(
     asyncio.create_task(_selftest(), name="upload-selftest")
 
 
+def status_topic_alias(topic: str, canonical: str) -> str | None:
+    """Bridge this device's status to a legacy, empty-account HACS topic.
+
+    Preserve the robot's original topic. Never alias across devices, models,
+    regions or explicitly configured accounts, and never route control topics.
+    """
+    source, target = topic.split("/"), canonical.split("/")
+    if len(source) != 7 or len(target) != 7:
+        return None
+    if any("+" in part or "#" in part for part in source + target):
+        return None
+    if (source[:2] != ["", "status"] or target[:2] != ["", "status"]
+            or source[-1] or target[-1] or target[2] in ("", "unknown")
+            or source[2] != target[2] or source[4:] != target[4:]
+            or not source[3] or target[3]):
+        return None
+    return canonical
+
+
 async def amain() -> int:
     opts = load_options()
     level = getattr(logging, str(opts.get("log_level", "info")).upper(), logging.INFO)
@@ -312,6 +331,7 @@ async def amain() -> int:
             return payload
 
     broker: MqttBroker
+    seeded_status_topics: set[str] = set()
 
     async def publish(topic: str, payload: str) -> int:
         return await broker.publish(topic, payload)
@@ -321,6 +341,34 @@ async def amain() -> int:
     async def on_publish(topic: str, payload: bytes) -> None:
         log.debug("%s %s", topic, payload[:400])
         await device.on_message(topic, payload)
+        if device.props.get("4.1") == 0:
+            seeded_status_topics.clear()
+        # Robot pushes can retain their account while HACS subscribed before
+        # account discovery (empty UID). Synthetic get replies already use the
+        # canonical topic; live status/map pushes need the same compatibility.
+        alias = status_topic_alias(topic, device.status_topic)
+        if alias is not None:
+            forwarded = map_transform(topic, payload)
+            # A camera can still hold another map/frame sequence. An I base
+            # must precede live P frames; account aliasing alone cannot reset it.
+            if (alias not in seeded_status_topics
+                    and any(alias in c["topics"] for c in broker.clients())):
+                try:
+                    data = json.loads(payload).get("data") or {}
+                    params = data.get("params")
+                    has_map = data.get("method") == "properties_changed" and isinstance(params, list) and any(
+                        isinstance(p, dict) and p.get("siid") == 6 and p.get("piid") == 1
+                        and isinstance(p.get("value"), str) and p["value"] for p in params)
+                except (ValueError, AttributeError, TypeError):
+                    has_map = False
+                if has_map:
+                    blob = api._live_map_blob()
+                    if blob:
+                        seed = json.dumps({"data": {"method": "properties_changed", "params": [
+                            {"siid": 6, "piid": 1, "value": blob}]}}).encode()
+                        if await broker.publish(alias, seed):
+                            seeded_status_topics.add(alias)
+            await broker.publish(alias, forwarded)
 
     async def on_connect(client_id: str, username: str | None) -> None:
         # Nur der Roboter meldet sich als "device_<did>". Andere Clients
