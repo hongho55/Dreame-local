@@ -91,6 +91,9 @@ class Device:
     ) -> None:
         self.did = str(did)
         self.uid = uid
+        # HA subscribes before dev_start discovers the robot account. Keep its
+        # configured status route stable; UID discovery still updates RPC routes.
+        self._status_uid = uid
         self.model = model
         self.region = region
         self._publish = publish
@@ -119,7 +122,7 @@ class Device:
     # ------------------------------------------------------------------ topics
     @property
     def status_topic(self) -> str:
-        return f"/status/{self.did}/{self.uid}/{self.model}/{self.region}/"
+        return f"/status/{self.did}/{self._status_uid}/{self.model}/{self.region}/"
 
     @property
     def query_topic(self) -> str:

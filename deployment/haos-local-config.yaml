@@ -1,5 +1,5 @@
 name: Dreame Local — X40 Pro Ultra
-version: "0.9.1-x40.10"
+version: "0.9.1-x40.11"
 slug: dreame_local_backend
 description: Upstream 0.9.1 with minimal X40 state forwarding and approved LAN HTTP upload
 arch:

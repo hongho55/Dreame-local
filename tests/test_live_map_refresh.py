@@ -68,6 +68,21 @@ class LiveMapRequestTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.device.send.await_count, 1)
 
 
+    async def test_refresh_still_finds_ha_after_robot_account_discovery(self):
+        self.device = Device('SYNTHETIC_DID', '', 'dreame.vacuum.r2401', 'cn', AsyncMock(), data_dir=Path(self.tmp.name))
+        self.device.online = True
+        self.device.send = AsyncMock(return_value={'code': 0})
+        self.put('STATE', STATES['SWEEPING'])
+        self.put('TASK_STATUS', 1)
+        subscription = self.device.status_topic
+        self.device.uid = 'SYNTHETIC_DISCOVERED_UID'
+        broker = SimpleNamespace(clients=lambda: [{'client_id': 'ha-test', 'topics': [subscription]}])
+        with patch('main.asyncio.sleep', new_callable=AsyncMock, side_effect=asyncio.CancelledError):
+            with self.assertRaises(asyncio.CancelledError):
+                await live_map_refresh(self.device, broker)
+        self.device.send.assert_awaited_once()
+
+
 class LiveMapLoopTests(unittest.IsolatedAsyncioTestCase):
     async def iteration(self, clients, error=None):
         device = SimpleNamespace(status_topic='/status/test//model/cn/', refresh_live_map=AsyncMock(side_effect=error))

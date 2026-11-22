@@ -1,5 +1,5 @@
 name: Dreame Local Cloud — X40 Pro Ultra
-version: "0.9.1-x40.10"
+version: "0.9.1-x40.11"
 slug: dreame_local_cloud
 description: Upstream-based X40 Pro Ultra compatibility trial for the existing HACS integration.
 url: https://github.com/hongho55/Dreame-local/tree/main

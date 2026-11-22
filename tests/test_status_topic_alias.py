@@ -90,6 +90,37 @@ class StatusForwardingTests(unittest.IsolatedAsyncioTestCase):
         self.transform.assert_called_once_with(self.incoming, payload)
         self.broker.publish.assert_awaited_once_with(self.canonical, b"synthetic-transformed-map")
 
+    async def test_account_discovery_keeps_legacy_subscriber_receiving_status(self):
+        import json
+        from tempfile import TemporaryDirectory
+        from unittest.mock import AsyncMock
+        Device = __import__('device').Device
+        with TemporaryDirectory() as directory:
+            real = Device('test-device', '', 'dreame.vacuum.test', 'cn', AsyncMock(return_value=1), data_dir=Path(directory))
+            real.poll_all = AsyncMock()
+            before = real.status_topic
+            await real._handle_pair(json.dumps({'data': {'method': 'dev_start', 'params': {'uid': 'robot-account'}}}).encode())
+            self.assertEqual(real.uid, 'robot-account')
+            self.assertIn('/robot-account/', real.recv_topic)
+            self.assertEqual(real.status_topic, before)
+            self.device.on_message = real.on_message
+            self.device.props = real.props
+            self.device.status_topic = real.status_topic
+            payload = json.dumps({'data': {'method': 'properties_changed', 'params': [
+                {'siid': 3, 'piid': 2, 'value': 80}]}}).encode()
+            await self.callback(self.incoming, payload)
+            self.broker.publish.assert_awaited_once_with(before, b'synthetic-transformed-map')
+
+    async def test_explicit_status_account_is_not_replaced_by_discovered_account(self):
+        from tempfile import TemporaryDirectory
+        from unittest.mock import AsyncMock
+        Device = __import__('device').Device
+        with TemporaryDirectory() as directory:
+            real = Device('test-device', 'configured-account', 'dreame.vacuum.test', 'cn', AsyncMock(), data_dir=Path(directory))
+            before = real.status_topic
+            real.uid = 'robot-account'
+            self.assertEqual(real.status_topic, before)
+
     async def test_canonical_push_is_not_looped_or_duplicated(self):
         await self.callback(self.canonical, b"synthetic")
         self.transform.assert_not_called()
