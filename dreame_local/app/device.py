@@ -400,6 +400,24 @@ class Device:
         params["in"] = [] if piid is None else [{"piid": piid, "value": value}]
         return await self.send("action", params)
 
+    async def refresh_live_map(self) -> bool:
+        """Request a fresh X40 frame without applying a cached API reply."""
+        task = self.get("TASK_STATUS")
+        state = HA_STATE.get(STATE_NAMES.get(self.get("STATE"), ""))
+        if (self.model != "dreame.vacuum.r2401" or not self.online
+                or type(task) is not int or task <= 0 or state != "cleaning"):
+            return False
+        action, frame = ACTIONS["REQUEST_MAP"], PROPS["FRAME_INFO"]
+        result = await self.send("action", {
+            "did": self.did, "siid": action["siid"], "aiid": action["aiid"],
+            "in": [{"piid": frame["piid"], "value": '{"frame_type":"I"}'}],
+        }, timeout=2.5)
+        if not isinstance(result, dict) or result.get("code") != 0:
+            raise RuntimeError("Live map request rejected")
+        # Fresh frames arrive through the existing upload/MQTT route. Do not
+        # inject the API cache into the renderer or reset the cleaning path.
+        return True
+
     def cleaning_mode(self) -> int | None:
         value = self.get("CLEANING_MODE")
         if self.model == "dreame.vacuum.r2401" and type(value) is int and value >= 0:

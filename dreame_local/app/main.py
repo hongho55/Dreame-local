@@ -20,14 +20,37 @@ from aiohttp import web
 
 from api import DreameApi
 import events
-from broker import MqttBroker
+from broker import MqttBroker, topic_matches
 from device import Device
 from ha import HaBridge
 from web import Web
 
 HERE = Path(__file__).resolve().parent
 OPTIONS = Path(os.environ.get("OPTIONS_FILE", "/data/options.json"))
-VERSION = "0.9.1-x40.9"
+VERSION = "0.9.1-x40.10"
+
+
+async def live_map_refresh(device: Device, broker: MqttBroker) -> None:
+    """One map request per second while cleaning with a connected HA consumer."""
+    loop = asyncio.get_running_loop()
+    while True:
+        started, period = loop.time(), 1.0
+        try:
+            subscribed = any(
+                topic_matches(topic, device.status_topic)
+                for client in broker.clients()
+                if not client["client_id"].startswith("device_")
+                for topic in client["topics"]
+            )
+            if subscribed:
+                await device.refresh_live_map()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            # Never overlap requests or keep hammering an offline/erroring robot.
+            logging.getLogger("map_refresh").debug("Map refresh skipped: %s", type(exc).__name__)
+            period = 5.0
+        await asyncio.sleep(max(0.05, period - (loop.time() - started)))
 
 
 def load_options() -> dict:
@@ -437,6 +460,7 @@ async def amain() -> int:
         asyncio.create_task(web_ui.start(), name="web"),
         asyncio.create_task(safe_upload(), name="upload"),
         asyncio.create_task(safe_api(), name="api"),
+        asyncio.create_task(live_map_refresh(device, broker), name="live_map_refresh"),
     ]
     if upload_base:
         log.info("Upload-Basis: %s (Presigned-URLs mit index + OSS-Query)", upload_base)
